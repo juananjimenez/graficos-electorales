@@ -1,0 +1,50 @@
+{
+  "title": "Resultado de las Elecciones en Castilla y León",
+  "yearCurr": "2026",
+  "yearPrev": "2022",
+  "totalSeats": 82,
+  "scrutiny": "98.44",
+  "participation": "70.78",
+  "parties": [
+    {
+      "name": "PP",
+      "col": "#1955e1",
+      "c_s": 33,
+      "c_p": "35.49",
+      "p_s": 58,
+      "p_p": "31.4"
+    },
+    {
+      "name": "PSOE",
+      "col": "#e01f1f",
+      "c_s": 30,
+      "c_p": "30.84",
+      "p_s": 30,
+      "p_p": "30.05"
+    },
+    {
+      "name": "Vox",
+      "col": "#30a211",
+      "c_s": 14,
+      "c_p": "18.87",
+      "p_s": 14,
+      "p_p": "17.64"
+    },
+    {
+      "name": "Por Andalucía",
+      "col": "#a127b9",
+      "c_s": 3,
+      "c_p": "4.30",
+      "p_s": 5,
+      "p_p": "4.3"
+    },
+    {
+      "name": "Adelante Andalucía",
+      "col": "#478613",
+      "c_s": 1,
+      "c_p": "0.69",
+      "p_s": 2,
+      "p_p": "1.53"
+    }
+  ]
+}

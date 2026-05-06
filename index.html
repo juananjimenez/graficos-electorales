@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <style>
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            margin: 0; 
+            background: #f0f0f0; 
+        }
+
+        .widget { 
+            width: 1200px; 
+            height: 675px; 
+            background: white;
+            padding: 40px 60px; 
+            box-sizing: border-box; 
+            box-shadow: 0 20px 50px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* LÍNEA 1: Titular */
+        h1 { 
+            font-size: 48px; 
+            margin: 0; 
+            color: #1a1a1a; 
+            letter-spacing: -1.5px; 
+            text-align: left;
+            width: 100%;
+        }
+        
+        /* LÍNEA 2: Barra de estado (MÁS GRANDE Y OSCURA) */
+        .meta-bar {
+            display: flex;
+            justify-content: space-between; 
+            width: 100%;
+            border-bottom: 3px solid #f0f0f0; /* Línea un poco más gruesa */
+            padding-bottom: 12px;
+            margin-top: 10px;
+        }
+
+        .meta-item { 
+            font-size: 18px; /* Subido de 15px a 18px */
+            font-weight: 800; 
+            color: #777; /* Oscurecido: de #bbb a #777 */
+            text-transform: uppercase; 
+            letter-spacing: 1px;
+        }
+
+        .meta-item span {
+            color: #222; /* Oscurecido: de #444 a #222 para máximo contraste */
+            margin-left: 6px;
+            margin-right: 20px;
+        }
+
+        .chart-box { 
+            position: relative; 
+            width: 100%; 
+            flex-grow: 1; 
+            margin-top: 15px;
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="widget">
+    <h1 id="ui-title">Cargando escrutinio...</h1>
+    
+    <div class="meta-bar">
+        <div class="meta-item">
+            ESCRUTADO: <span id="ui-scrutiny">0%</span>
+            ÚLTIMA ACTUALIZACIÓN: <span id="ui-time">--:--:--</span>
+        </div>
+        <div class="meta-item">
+            PARTICIPACIÓN: <span id="ui-participation">0%</span>
+        </div>
+    </div>
+
+    <div class="chart-box">
+        <canvas id="electionChart"></canvas>
+    </div>
+</div>
+
+<script>
+    Chart.register(ChartDataLabels);
+    let myChart = null;
+
+    async function refresh() {
+        try {
+            const res = await fetch('http://localhost:3000/data');
+            const data = await res.json();
+            
+            const sorted = data.parties.sort((a,b) => b.c_s - a.c_s);
+
+            document.getElementById('ui-title').innerText = data.title;
+            document.getElementById('ui-scrutiny').innerText = data.scrutiny + '%';
+            document.getElementById('ui-participation').innerText = data.participation + '%';
+            
+            const ahora = new Date();
+            document.getElementById('ui-time').innerText = ahora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+            const legendLabels = sorted.map(p => {
+                const diff = p.c_s - p.p_s;
+                let trend = "";
+                if (diff > 0) trend = ` ▲ +${diff}`;
+                else if (diff < 0) trend = ` ▼ ${diff}`;
+                else trend = " =";
+                return `${p.name}${trend}`;
+            });
+
+            const datasets = [
+                {
+                    label: 'Hoy',
+                    data: sorted.map(p => p.c_s),
+                    backgroundColor: sorted.map(p => p.col),
+                    weight: 1, borderWidth: 0,
+                    datalabels: { 
+                        display: true, color: '#fff', 
+                        font: { weight: 'bold', size: 24 },
+                        textShadowBlur: 6, textShadowColor: 'rgba(0,0,0,0.6)'
+                    }
+                },
+                {
+                    label: 'Separador',
+                    data: [1], backgroundColor: ['#ffffff'],
+                    weight: 0.15, borderWidth: 0,
+                    datalabels: { display: false }, tooltip: { enabled: false }
+                },
+                {
+                    label: 'Anterior',
+                    data: sorted.map(p => p.p_s),
+                    backgroundColor: sorted.map(p => p.col + "88"),
+                    weight: 0.8, borderWidth: 0,
+                    datalabels: { 
+                        display: true, color: '#fff', 
+                        font: { weight: 'bold', size: 18 },
+                        textShadowBlur: 6, textShadowColor: 'rgba(0,0,0,0.6)'
+                    }
+                }
+            ];
+
+            if (!myChart) {
+                const ctx = document.getElementById('electionChart').getContext('2d');
+                myChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: { labels: legendLabels, datasets: datasets },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        rotation: -90,
+                        circumference: 180,
+                        cutout: '35%',
+                        plugins: {
+                            legend: { 
+                                position: 'bottom', 
+                                labels: { 
+                                    boxWidth: 20, 
+                                    padding: 35,
+                                    font: { size: 18, weight: 'bold' },
+                                    filter: (item) => !['Hoy', 'Anterior', 'Separador'].includes(item.text)
+                                } 
+                            },
+                            datalabels: { formatter: (v) => v > 0 ? v : '' },
+                            tooltip: {
+                                titleFont: { size: 20 },
+                                bodyFont: { size: 18 },
+                                filter: (item) => item.datasetIndex !== 1,
+                                callbacks: {
+                                    label: (ctx) => {
+                                        const p = sorted[ctx.dataIndex];
+                                        return ctx.datasetIndex === 0 
+                                            ? ` ${data.yearCurr}: ${p.c_s} esc. (${p.c_p}%)`
+                                            : ` ${data.yearPrev}: ${p.p_s} esc. (${p.p_p}%)`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            } else {
+                myChart.data.labels = legendLabels;
+                myChart.data.datasets[0].data = datasets[0].data;
+                myChart.data.datasets[0].backgroundColor = datasets[0].backgroundColor;
+                myChart.data.datasets[2].data = datasets[2].data;
+                myChart.data.datasets[2].backgroundColor = datasets[2].backgroundColor;
+                myChart.update('none');
+            }
+        } catch(e) { console.error(e); }
+    }
+
+    setInterval(refresh, 5000);
+    refresh();
+</script>
+</body>
+</html>

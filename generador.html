@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de Gráficos Electorales</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f4f9; display: flex; height: 100vh; margin: 0; }
+        #sidebar { width: 400px; background: #fff; padding: 20px; border-right: 1px solid #ddd; overflow-y: auto; }
+        #preview { flex-grow: 1; padding: 40px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .party-row { background: #f9f9f9; padding: 10px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #eee; position: relative; }
+        .party-row input { margin-bottom: 5px; display: block; width: 90%; }
+        .btn-add { background: #0078d4; color: white; border: none; padding: 10px; width: 100%; cursor: pointer; border-radius: 5px; }
+        .btn-generate { background: #28a745; color: white; border: none; padding: 15px; width: 100%; margin-top: 20px; cursor: pointer; font-weight: bold; border-radius: 5px; }
+        .btn-del { position: absolute; top: 10px; right: 10px; color: red; cursor: pointer; border: none; background: none; }
+        textarea { width: 100%; height: 150px; margin-top: 20px; font-family: monospace; font-size: 12px; }
+        canvas { max-width: 600px; max-height: 600px; }
+    </style>
+</head>
+<body>
+
+<div id="sidebar">
+    <h2>🗳️ Datos Electorales</h2>
+    <div id="party-list">
+        <div class="party-row">
+            <button class="btn-del" onclick="this.parentElement.remove()">✕</button>
+            <input type="text" placeholder="Nombre del Partido" class="p-name" value="Partido 1">
+            <input type="number" placeholder="Escaños / Votos" class="p-data" value="50">
+            <input type="color" class="p-color" value="#3498db">
+        </div>
+    </div>
+    
+    <button class="btn-add" onclick="addParty()">+ Añadir Partido</button>
+    <button class="btn-generate" onclick="generateCode()">Generar y Copiar Código</button>
+    
+    <h3>Código Final:</h3>
+    <textarea id="output-code" readonly></textarea>
+</div>
+
+<div id="preview">
+    <h2>Vista Previa en Tiempo Real</h2>
+    <canvas id="electionChart"></canvas>
+</div>
+
+<script>
+    let chart;
+
+    function addParty() {
+        const div = document.createElement('div');
+        div.className = 'party-row';
+        div.innerHTML = `
+            <button class="btn-del" onclick="this.parentElement.remove()">✕</button>
+            <input type="text" placeholder="Nombre del Partido" class="p-name">
+            <input type="number" placeholder="Escaños / Votos" class="p-data">
+            <input type="color" class="p-color" value="#cccccc">`;
+        document.getElementById('party-list').appendChild(div);
+    }
+
+    function generateCode() {
+        const names = Array.from(document.querySelectorAll('.p-name')).map(i => i.value);
+        const values = Array.from(document.querySelectorAll('.p-data')).map(i => i.value);
+        const colors = Array.from(document.querySelectorAll('.p-color')).map(i => i.value);
+
+        // Actualizar Preview
+        if (chart) chart.destroy();
+        const ctx = document.getElementById('electionChart').getContext('2d');
+        chart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: names,
+                datasets: [{ data: values, backgroundColor: colors }]
+            },
+            options: { 
+                plugins: { 
+                    legend: { position: 'bottom' },
+                    tooltip: { enabled: true }
+                }
+            }
+        });
+
+        // Generar el bloque de código HTML nativo
+        const config = JSON.stringify({ names, values, colors });
+        const finalHTML = `
+<!-- Inicio Gráfico Electoral -->
+<div class="grafico-electoral-contenedor" style="width:100%; max-width:500px; margin: 20px auto;">
+    <canvas id="chart_id_${Math.floor(Math.random() * 1000)}"></canvas>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"><\/script>
+<script>
+(function() {
+    const rawData = ${config};
+    const ctx = document.currentScript.previousElementSibling.querySelector('canvas');
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: rawData.names,
+            datasets: [{
+                data: rawData.values,
+                backgroundColor: rawData.colors,
+                borderWidth: 1
+            }]
+        },
+        options: { 
+            responsive: true, 
+            maintainAspectRatio: true,
+            plugins: { legend: { position: 'bottom' } } 
+        }
+    });
+})();
+<\/script>
+<!-- Fin Gráfico Electoral -->`;
+
+        document.getElementById('output-code').value = finalHTML;
+        
+        // Copiar al portapapeles automáticamente
+        document.getElementById('output-code').select();
+        document.execCommand('copy');
+        alert("¡Código copiado al portapapeles! Ya puedes pegarlo en tu noticia.");
+    }
+
+    // Arrancar con uno por defecto
+    generateCode();
+</script>
+
+</body>
+</html>

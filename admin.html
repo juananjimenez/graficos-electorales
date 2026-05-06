@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin - Panel Electoral</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; padding: 20px; }
+        .container { max-width: 1100px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .header-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr; gap: 15px; margin-bottom: 25px; padding: 15px; background: #eee; border-radius: 8px; }
+        .field-group { display: flex; flex-direction: column; }
+        label { font-size: 11px; font-weight: bold; margin-bottom: 4px; color: #555; }
+        input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        .party-row { display: grid; grid-template-columns: 2fr 60px 1fr 1fr 1fr 1fr 40px; gap: 10px; align-items: center; padding: 10px; border-bottom: 1px solid #eee; }
+        .labels { display: grid; grid-template-columns: 2fr 60px 1fr 1fr 1fr 1fr 40px; gap: 10px; font-size: 10px; font-weight: bold; text-align: center; color: #888; margin-bottom: 5px; }
+        .btn-save { background: #2c3e50; color: white; border: none; padding: 15px; border-radius: 6px; cursor: pointer; width: 100%; margin-top: 20px; font-size: 16px; font-weight: bold; }
+        .btn-add { background: #3498db; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; margin-top: 10px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>🗳️ Configuración de Resultados</h2>
+    <div class="header-grid">
+        <div class="field-group"><label>Titular</label><input type="text" id="title"></div>
+        <div class="field-group"><label>Año Actual</label><input type="text" id="yCurr"></div>
+        <div class="field-group"><label>Año Anterior</label><input type="text" id="yPrev"></div>
+        <div class="field-group"><label>Total Escaños</label><input type="number" id="totalSeats"></div>
+        <div class="field-group"><label>Escrutinio %</label><input type="number" id="scrutiny" step="0.1"></div>
+        <div class="field-group"><label>Participación %</label><input type="number" id="participation" step="0.1"></div>
+    </div>
+    <div class="labels">
+        <div>PARTIDO</div><div>COLOR</div><div>ESC. HOY</div><div>% HOY</div><div>ESC. ANT.</div><div>% ANT.</div><div></div>
+    </div>
+    <div id="party-list"></div>
+    <button class="btn-add" onclick="addPartyRow()">+ Nuevo Partido</button>
+    <button class="btn-save" onclick="save()">ACTUALIZAR DATOS EN VIVO</button>
+</div>
+
+<script>
+    async function load() {
+        const res = await fetch('http://localhost:3000/data');
+        const d = await res.json();
+        document.getElementById('title').value = d.title || "";
+        document.getElementById('yCurr').value = d.yearCurr || "2026";
+        document.getElementById('yPrev').value = d.yearPrev || "2023";
+        document.getElementById('totalSeats').value = d.totalSeats || 133;
+        document.getElementById('scrutiny').value = d.scrutiny || 0;
+        document.getElementById('participation').value = d.participation || 0;
+        if (d.parties && d.parties.length > 0) {
+            d.parties.forEach(p => addPartyRow(p.name, p.col, p.c_s, p.c_p, p.p_s, p.p_p));
+        } else { addPartyRow(); }
+    }
+
+    function addPartyRow(n='', col='#cccccc', cs='', cp='', ps='', pp='') {
+        const div = document.createElement('div');
+        div.className = 'party-row';
+        div.innerHTML = `
+            <input type="text" class="n" value="${n}">
+            <input type="color" class="c" value="${col}">
+            <input type="number" class="cs" value="${cs}">
+            <input type="number" class="cp" value="${cp}" step="0.1">
+            <input type="number" class="ps" value="${ps}">
+            <input type="number" class="pp" value="${pp}" step="0.1">
+            <button onclick="this.parentElement.remove()" style="color:red; background:none; border:none; cursor:pointer">✕</button>`;
+        document.getElementById('party-list').appendChild(div);
+    }
+
+    async function save() {
+        const payload = {
+            title: document.getElementById('title').value,
+            yearCurr: document.getElementById('yCurr').value,
+            yearPrev: document.getElementById('yPrev').value,
+            totalSeats: parseInt(document.getElementById('totalSeats').value),
+            scrutiny: document.getElementById('scrutiny').value,
+            participation: document.getElementById('participation').value,
+            parties: Array.from(document.querySelectorAll('.party-row')).map(r => ({
+                name: r.querySelector('.n').value, col: r.querySelector('.c').value,
+                c_s: parseInt(r.querySelector('.cs').value)||0, c_p: r.querySelector('.cp').value||0,
+                p_s: parseInt(r.querySelector('.ps').value)||0, p_p: r.querySelector('.pp').value||0
+            }))
+        };
+        await fetch('http://localhost:3000/update-results', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+        alert("¡Datos actualizados!");
+    }
+    load();
+</script>
+</body>
+</html>
